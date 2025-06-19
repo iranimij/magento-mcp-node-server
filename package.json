@@ -1,7 +1,10 @@
 {
-  "name": "send-email",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "@iranimij/magento-mcp-remote-server",
+  "version": "1.0.2",
+  "main": "dist/bundle.cjs",
+  "bin": {
+    "magento-mcp-remote-server": "./dist/bundle.cjs"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -18,12 +21,21 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.13.5",
+    "@types/node-fetch": "^2.6.12",
     "rollup": "^4.44.0",
     "typescript": "^5.7.3"
   },
   "type": "module",
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
-    "bundle": "rollup -c"
-  }
+    "bundle": "rollup -c",
+    "start": "node dist/bundle.cjs"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "dist/bundle.cjs",
+    "README.md"
+  ]
 }

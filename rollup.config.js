@@ -6,7 +6,8 @@ export default {
     input: 'index.ts',
     output: {
         file: 'dist/bundle.cjs',
-        format: 'cjs'
+        format: 'cjs',
+        banner: '#!/usr/bin/env node'
     },
     plugins: [resolve(), commonjs(), json()],
     external: ['fs', 'path', 'os'] // Node.js built-ins
