@@ -96999,114 +96999,145 @@ fetch.isRedirect = function (code) {
 // expose Promise
 fetch.Promise = global.Promise;
 
+const baseUrl$1 = process.env.MAGENTO_API_URL;
+const username = process.env.MAGENTO_ADMIN_USERNAME;
+const password = process.env.MAGENTO_ADMIN_PASSWORD;
+const agent$1 = new https.Agent({ rejectUnauthorized: false });
+let cachedToken = null;
+async function getMagentoToken() {
+    if (!baseUrl$1 || !username || !password) {
+        console.error('Missing environment variables:', { baseUrl: baseUrl$1, username, password });
+        throw new Error('MAGENTO_API_URL, MAGENTO_ADMIN_USERNAME, or MAGENTO_ADMIN_PASSWORD is not set in environment variables.');
+    }
+    const url = `${baseUrl$1}/rest/V1/integration/admin/token`;
+    console.log('Magento Auth Request:', { url, username });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            agent: agent$1,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error('Magento Auth Error Response:', errorBody);
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+        }
+        const token = await response.json();
+        if (typeof token === 'string') {
+            cachedToken = token;
+            return token;
+        }
+        else {
+            console.error('Unexpected token response:', token);
+            throw new Error('Unexpected token response from Magento API');
+        }
+    }
+    catch (error) {
+        console.error('Fetch error:', error);
+        throw new Error(`Fetch error: ${error}`);
+    }
+}
+
 const baseUrl = process.env.MAGENTO_API_URL;
 // const token = process.env.MAGENTO_API_TOKEN;
 // Create server instance
 const server = new McpServer({
-  name: "mcp-server-template",
-  version: "0.0.3",
+    name: "mcp-server-template",
+    version: "0.0.3",
 });
-
 const agent = new https.Agent({ rejectUnauthorized: false });
-
 // Define a sample tool
-server.tool(
-  "sample-tool",
-  "A sample tool for demonstration purposes",
-  {
+server.tool("sample-tool", "A sample tool for demonstration purposes", {
     input: stringType().describe("Input parameter for the sample tool"),
-  },
-  async ({ input }) => {
+}, async ({ input }) => {
     // Process the input
     const output = `Processed: ${input}`;
-    
     // Return the result
     return {
-      content: [
-        {
-          type: "text",
-          text: output,
-        },
-      ],
-    };
-  }
-);
-
-server.tool(
-    "your-tool-name",
-    "Your tool description",
-    {
-      // Define your tool's parameters using Zod schema
-      parameter: stringType().describe("Parameter description"),
-    },
-    async ({ parameter }) => {
-      // Implement your tool's logic here
-      return {
         content: [
-          {
-            type: "text",
-            text: "Your tool's response",
-          },
+            {
+                type: "text",
+                text: output,
+            },
         ],
-      };
-    }
-);
-
-server.tool(
-  "get-product-details",
-  "Get product details for a given product ID from the Magento API.",
-  {
-    productId: stringType().describe("The product ID to fetch details for."),
-  },
-  async ({ productId }) => {
-    if (!baseUrl) {
-      return {
+    };
+});
+server.tool("your-tool-name", "Your tool description", {
+    // Define your tool's parameters using Zod schema
+    parameter: stringType().describe("Parameter description"),
+}, async ({ parameter }) => {
+    // Implement your tool's logic here
+    return {
         content: [
-          { type: "text", text: "Error: MAGENTO_API_URL or MAGENTO_API_TOKEN is not set in environment variables." }
-        ]
-      };
+            {
+                type: "text",
+                text: "Your tool's response",
+            },
+        ],
+    };
+});
+server.tool("get-product-details", "Get product details for a given product ID from the Magento API.", {
+    productId: stringType().describe("The product ID to fetch details for."),
+}, async ({ productId }) => {
+    if (!baseUrl) {
+        return {
+            content: [
+                { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+            ]
+        };
+    }
+    let token;
+    try {
+        token = await getMagentoToken();
+    }
+    catch (error) {
+        return {
+            content: [
+                { type: "text", text: `Token fetch error: ${error}` }
+            ]
+        };
     }
     const url = `${baseUrl}/rest/V1/iranimij/Product/${productId}`;
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        agent,
-        headers: {
-          // 'Authorization': `Bearer ${token}`,
-          // 'X-Iranimij-Api-Token': `${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
+        const response = await fetch(url, {
+            method: 'GET',
+            agent,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        if (!response.ok) {
+            return {
+                content: [
+                    { type: "text", text: `Error: ${response.status} ${response.statusText}` }
+                ]
+            };
+        }
+        const data = await response.json();
         return {
-          content: [
-            { type: "text", text: `Error: ${response.status} ${response.statusText}` }
-          ]
+            content: [
+                { type: "text", text: JSON.stringify(data, null, 2) }
+            ]
         };
-      }
-      const data = await response.json();
-      return {
-        content: [
-          { type: "text", text: JSON.stringify(data, null, 2) }
-        ]
-      };
-    } catch (error) {
-      return {
-        content: [
-          { type: "text", text: `Fetch error: ${error}` }
-        ]
-      };
     }
+    catch (error) {
+        return {
+            content: [
+                { type: "text", text: `Fetch error: ${error}` }
+            ]
+        };
     }
-);
-
+});
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.log("MCP Server running on stdio");
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.log("MCP Server running on stdio");
 }
-
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
+    console.error("Fatal error in main():", error);
+    process.exit(1);
 });

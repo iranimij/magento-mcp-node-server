@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import fetch from 'node-fetch';
 import https from 'https';
+import { getMagentoToken } from './src/magentoAuth.js';
 const baseUrl = process.env.MAGENTO_API_URL;
 // const token = process.env.MAGENTO_API_TOKEN;
 // Create server instance
@@ -47,7 +48,18 @@ server.tool("get-product-details", "Get product details for a given product ID f
     if (!baseUrl) {
         return {
             content: [
-                { type: "text", text: "Error: MAGENTO_API_URL or MAGENTO_API_TOKEN is not set in environment variables." }
+                { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+            ]
+        };
+    }
+    let token;
+    try {
+        token = await getMagentoToken();
+    }
+    catch (error) {
+        return {
+            content: [
+                { type: "text", text: `Token fetch error: ${error}` }
             ]
         };
     }
@@ -57,8 +69,7 @@ server.tool("get-product-details", "Get product details for a given product ID f
             method: 'GET',
             agent,
             headers: {
-                // 'Authorization': `Bearer ${token}`,
-                // 'X-Iranimij-Api-Token': `${token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
         });

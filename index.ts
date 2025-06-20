@@ -3,8 +3,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import fetch from 'node-fetch';
 import https from 'https';
+import { getMagentoToken } from './src/magentoAuth.js';
+
 
 const baseUrl = process.env.MAGENTO_API_URL;
+
 // const token = process.env.MAGENTO_API_TOKEN;
 // Create server instance
 const server = new McpServer({
@@ -24,7 +27,7 @@ server.tool(
   async ({ input }) => {
     // Process the input
     const output = `Processed: ${input}`;
-    
+
     // Return the result
     return {
       content: [
@@ -67,7 +70,17 @@ server.tool(
     if (!baseUrl) {
       return {
         content: [
-          { type: "text", text: "Error: MAGENTO_API_URL or MAGENTO_API_TOKEN is not set in environment variables." }
+          { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+        ]
+      };
+    }
+    let token: string;
+    try {
+      token = await getMagentoToken();
+    } catch (error) {
+      return {
+        content: [
+          { type: "text", text: `Token fetch error: ${error}` }
         ]
       };
     }
@@ -77,8 +90,7 @@ server.tool(
         method: 'GET',
         agent,
         headers: {
-          // 'Authorization': `Bearer ${token}`,
-          // 'X-Iranimij-Api-Token': `${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -102,7 +114,7 @@ server.tool(
         ]
       };
     }
-    }
+  }
 );
 
 async function main() {
