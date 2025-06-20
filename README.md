@@ -55,7 +55,11 @@ Fetches product details for a given product ID from the Magento API.
 
 **Example prompt:**
 ```txt
-send product details 1
+1. Send me product details 1
+2. Send me today's orders
+3. Send me today's orders grand total
+4. Send me today's pending orders
+5. Send me today's customers names
 ```
 
 ## Development
