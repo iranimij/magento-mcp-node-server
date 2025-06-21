@@ -2,11 +2,11 @@
 'use strict';
 
 var process$1 = require('node:process');
+var https = require('https');
 var Stream = require('stream');
 var http = require('http');
 var Url = require('url');
 var require$$0 = require('punycode');
-var https = require('https');
 var zlib = require('zlib');
 
 var util$1;
@@ -96999,17 +96999,17 @@ fetch.isRedirect = function (code) {
 // expose Promise
 fetch.Promise = global.Promise;
 
-const baseUrl$1 = process.env.MAGENTO_API_URL;
+const baseUrl = process.env.MAGENTO_API_URL;
 const username = process.env.MAGENTO_ADMIN_USERNAME;
 const password = process.env.MAGENTO_ADMIN_PASSWORD;
 const agent$1 = new https.Agent({ rejectUnauthorized: false });
 let cachedToken = null;
 async function getMagentoToken() {
-    if (!baseUrl$1 || !username || !password) {
-        console.error('Missing environment variables:', { baseUrl: baseUrl$1, username, password });
+    if (!baseUrl || !username || !password) {
+        console.error('Missing environment variables:', { baseUrl, username, password });
         throw new Error('MAGENTO_API_URL, MAGENTO_ADMIN_USERNAME, or MAGENTO_ADMIN_PASSWORD is not set in environment variables.');
     }
-    const url = `${baseUrl$1}/rest/V1/integration/admin/token`;
+    const url = `${baseUrl}/rest/V1/integration/admin/token`;
     console.log('Magento Auth Request:', { url, username });
     try {
         const response = await fetch(url, {
@@ -97041,149 +97041,298 @@ async function getMagentoToken() {
     }
 }
 
-const baseUrl = process.env.MAGENTO_API_URL;
+function register$3(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("create-customer", "Create a new customer in Magento.", {
+        customer: objectType({
+            email: stringType().describe("The customer's email address."),
+            firstname: stringType().describe("The customer's first name."),
+            lastname: stringType().describe("The customer's last name."),
+            addresses: arrayType(objectType({
+                defaultShipping: booleanType().optional().describe("Is this the default shipping address?"),
+                defaultBilling: booleanType().optional().describe("Is this the default billing address?"),
+                firstname: stringType().describe("The first name for the address."),
+                lastname: stringType().describe("The last name for the address."),
+                region: objectType({
+                    regionCode: stringType().describe("The region code (e.g., NY)."),
+                    region: stringType().describe("The region name (e.g., New York)."),
+                    regionId: numberType().describe("The region ID."),
+                }).describe("The region for the address."),
+                postcode: stringType().describe("The postal code."),
+                street: arrayType(stringType()).describe("The street address lines."),
+                city: stringType().describe("The city."),
+                telephone: stringType().describe("The telephone number."),
+                countryId: stringType().describe("The country ID (e.g., US)."),
+            })).optional().describe("A list of customer addresses."),
+        }).describe("The customer object."),
+        password: stringType().describe("The customer's password."),
+    }, async ({ customer, password }) => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        const url = `${baseUrl}/rest/default/V1/customers`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                agent,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ customer, password }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                return {
+                    content: [
+                        { type: "text", text: `Error: ${response.status} ${response.statusText} - ${errorText}` }
+                    ]
+                };
+            }
+            const data = await response.json();
+            return {
+                content: [
+                    { type: "text", text: JSON.stringify(data, null, 2) }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
+function register$2(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("get-product-details", "Get product details for a given product ID from the Magento API.", {
+        productId: stringType().describe("The product ID to fetch details for."),
+    }, async ({ productId }) => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        const url = `${baseUrl}/rest/V1/iranimij/Product/${productId}`;
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                agent,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) {
+                return {
+                    content: [
+                        { type: "text", text: `Error: ${response.status} ${response.statusText}` }
+                    ]
+                };
+            }
+            const data = await response.json();
+            return {
+                content: [
+                    { type: "text", text: JSON.stringify(data, null, 2) }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
+function register$1(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("get-todays-orders", "Get all today orders details from the Magento API.", {}, async () => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        const url = `${baseUrl}/rest/V1/iranimij/Order/1`;
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                agent,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) {
+                return {
+                    content: [
+                        { type: "text", text: `Error: ${response.status} ${response.statusText}` }
+                    ]
+                };
+            }
+            const data = await response.json();
+            return {
+                content: [
+                    { type: "text", text: JSON.stringify(data, null, 2) }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
+function register(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("create-simple-product", "Create a new simple product in Magento.", {
+        product: objectType({
+            sku: stringType().describe("SKU"),
+            name: stringType().describe("Product name"),
+            attribute_set_id: numberType().describe("Attribute set ID"),
+            price: numberType().describe("Product price"),
+            status: numberType().describe("Product status"),
+            visibility: numberType().describe("Product visibility"),
+            type_id: literalType("simple").describe("Product type"),
+            weight: stringType().optional().describe("Product weight"),
+            extension_attributes: objectType({
+                category_links: arrayType(objectType({
+                    position: numberType(),
+                    category_id: stringType()
+                })).optional(),
+                stock_item: objectType({
+                    qty: stringType(),
+                    is_in_stock: booleanType()
+                }).optional()
+            }).optional(),
+            custom_attributes: arrayType(objectType({
+                attribute_code: stringType(),
+                value: stringType()
+            })).optional()
+        }).describe("The product object."),
+    }, async ({ product }) => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        const url = `${baseUrl}/rest/default/V1/products`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                agent,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ product }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                return {
+                    content: [
+                        { type: "text", text: `Error: ${response.status} ${response.statusText} - ${errorText}` }
+                    ]
+                };
+            }
+            const data = await response.json();
+            return {
+                content: [
+                    { type: "text", text: JSON.stringify(data, null, 2) }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
+async function loadTools(server, agent) {
+    register$1(server, agent);
+    register$3(server, agent);
+    register$2(server, agent);
+    register(server, agent);
+}
+
+process.env.MAGENTO_API_URL;
 // const token = process.env.MAGENTO_API_TOKEN;
 // Create server instance
 const server = new McpServer({
-    name: "mcp-server-template",
-    version: "0.0.3",
+    name: "magento-mcp-server",
+    version: "0.0.4",
 });
 const agent = new https.Agent({ rejectUnauthorized: false });
-// Define a sample tool
-server.tool("sample-tool", "A sample tool for demonstration purposes", {
-    input: stringType().describe("Input parameter for the sample tool"),
-}, async ({ input }) => {
-    // Process the input
-    const output = `Processed: ${input}`;
-    // Return the result
-    return {
-        content: [
-            {
-                type: "text",
-                text: output,
-            },
-        ],
-    };
-});
-server.tool("your-tool-name", "Your tool description", {
-    // Define your tool's parameters using Zod schema
-    parameter: stringType().describe("Parameter description"),
-}, async ({ parameter }) => {
-    // Implement your tool's logic here
-    return {
-        content: [
-            {
-                type: "text",
-                text: "Your tool's response",
-            },
-        ],
-    };
-});
-server.tool("get-product-details", "Get product details for a given product ID from the Magento API.", {
-    productId: stringType().describe("The product ID to fetch details for."),
-}, async ({ productId }) => {
-    if (!baseUrl) {
-        return {
-            content: [
-                { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
-            ]
-        };
-    }
-    let token;
-    try {
-        token = await getMagentoToken();
-    }
-    catch (error) {
-        return {
-            content: [
-                { type: "text", text: `Token fetch error: ${error}` }
-            ]
-        };
-    }
-    const url = `${baseUrl}/rest/V1/iranimij/Product/${productId}`;
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            agent,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        if (!response.ok) {
-            return {
-                content: [
-                    { type: "text", text: `Error: ${response.status} ${response.statusText}` }
-                ]
-            };
-        }
-        const data = await response.json();
-        return {
-            content: [
-                { type: "text", text: JSON.stringify(data, null, 2) }
-            ]
-        };
-    }
-    catch (error) {
-        return {
-            content: [
-                { type: "text", text: `Fetch error: ${error}` }
-            ]
-        };
-    }
-});
-server.tool("get-todays-orders", "Get all today orders details from the Magento API.", {}, async () => {
-    if (!baseUrl) {
-        return {
-            content: [
-                { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
-            ]
-        };
-    }
-    let token;
-    try {
-        token = await getMagentoToken();
-    }
-    catch (error) {
-        return {
-            content: [
-                { type: "text", text: `Token fetch error: ${error}` }
-            ]
-        };
-    }
-    const url = `${baseUrl}/rest/V1/iranimij/Order/1`;
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            agent,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        if (!response.ok) {
-            return {
-                content: [
-                    { type: "text", text: `Error: ${response.status} ${response.statusText}` }
-                ]
-            };
-        }
-        const data = await response.json();
-        return {
-            content: [
-                { type: "text", text: JSON.stringify(data, null, 2) }
-            ]
-        };
-    }
-    catch (error) {
-        return {
-            content: [
-                { type: "text", text: `Fetch error: ${error}` }
-            ]
-        };
-    }
-});
 async function main() {
+    // Load tools automatically
+    await loadTools(server, agent);
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.log("MCP Server running on stdio");
