@@ -1,6 +1,6 @@
 {
   "name": "@iranimij/magento-mcp-remote-server",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "main": "dist/bundle.cjs",
   "bin": {
     "magento-mcp-remote-server": "./dist/bundle.cjs"
