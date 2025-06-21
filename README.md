@@ -64,11 +64,15 @@ node dist/bundle.cjs
 ### 1. `get-product-details`
 Fetches product details for a given product ID from the Magento API.
 
+example prompt: get product details 1
+
 **Parameters:**
 - `productId` (string): The product ID to fetch details for.
 
 ### 2. `get-todays-orders`
 Fetches all orders placed today from the Magento API. This tool doesn't require any parameters.
+
+example prompt: get todays orders
 
 ### 3. `create-customer`
 Creates a new customer in Magento.
@@ -81,8 +85,12 @@ Creates a new customer in Magento.
   - `addresses` (array, optional): A list of customer addresses.
 - `password` (string): The customer's password.
 
+example prompt: create a new customer
+
 ### 4. `create-simple-product`
 Creates a new simple product in Magento.
+
+example prompt: create a new simple product
 
 **Parameters:**
 - `product` (object): An object containing the product's details.
