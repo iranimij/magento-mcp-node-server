@@ -31,7 +31,7 @@ export function register(server: McpServer, agent: https.Agent) {
                     ]
                 };
             }
-            const url = `${baseUrl}/rest/V1/iranimij/Product/${productId}`;
+            const url = `${baseUrl}/rest/V1/iranimij/Product?productId=${productId}`;
             try {
                 const response = await fetch(url, {
                     method: 'GET',

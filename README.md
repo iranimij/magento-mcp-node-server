@@ -1,14 +1,6 @@
 # @iranimij/magento-mcp-remote-server
 
-A remote Model Context Protocol (MCP) server designed to work with the [Magento 2 MCP server module](https://github.com/iranimij/magento-mcp-server). This library provides a CLI server that exposes tools for demonstration and for fetching product details from a Magento backend. It is intended to be used in conjunction with the Magento 2 module to enable AI and remote automation features for your Magento store.
-
-## Features
-
-- MCP server implementation using [@modelcontextprotocol/sdk]
-- CLI tool for remote server operation
-- Fetch product details from a Magento API
-- Easily extensible with custom tools
-- Written in TypeScript
+A remote Model Context Protocol (MCP) server for integrating with the [Magento 2 MCP server module](https://github.com/iranimij/magento-mcp-server). This library provides a CLI server that exposes tools for demonstration and for fetching product details from a Magento backend. It is intended to be used in conjunction with the Magento 2 module to enable AI and remote automation features for your Magento store.
 
 ## Installation
 
@@ -24,7 +16,8 @@ npm run build && npm run bundle
 ```
 
 ## Usage
-Use below code in your cursor mcp settings
+
+Add the following to your cursor MCP settings:
 
 ```json
 "testServer": {
@@ -38,15 +31,10 @@ Use below code in your cursor mcp settings
 },
 ```
 
-
 ### As a CLI
 
 ```bash
 npx magento-mcp-remote-server
-```
-
-```bash
-magento-mcp-remote-server
 ```
 
 Or, if running locally after build:
@@ -59,68 +47,29 @@ node dist/bundle.cjs
 - `MAGENTO_API_URL` (required): The base URL of your Magento API (e.g., `https://your-magento-site.com`).
 - (Optional) You may add authentication headers in `index.ts` if your Magento API requires a token.
 
-## Tools Provided
+---
 
-### 1. `get-product-details`
-Fetches product details for a given product ID from the Magento API.
+## Tools
 
-example prompt: get product details 1
+This server exposes the following tools. Click each tool for detailed documentation:
 
-**Parameters:**
-- `productId` (string): The product ID to fetch details for.
+- [get-product-details](docs/get-product-details.md): Fetch product details for a given product ID from the Magento API.
+- [get-todays-orders](docs/get-todays-orders.md): Fetch all orders placed today from the Magento API.
+- [create-customer](docs/create-customer.md): Create a new customer in Magento.
+- [create-simple-product](docs/create-simple-product.md): Create a new simple product in Magento.
+- [search-product-details](docs/search-product-details.md): Search for product details by SKU, name, or ID from the Magento API.
 
-### 2. `get-todays-orders`
-Fetches all orders placed today from the Magento API. This tool doesn't require any parameters.
+---
 
-example prompt: get todays orders
+### Example Output
 
-### 3. `create-customer`
-Creates a new customer in Magento.
+Below is an example output for a product search using the `search-product-details` tool:
 
-**Parameters:**
-- `customer` (object): An object containing the customer's details.
-  - `email` (string): The customer's email address.
-  - `firstname` (string): The customer's first name.
-  - `lastname` (string): The customer's last name.
-  - `addresses` (array, optional): A list of customer addresses.
-- `password` (string): The customer's password.
+![Example product search output](search-product-name.png)
 
-example prompt: create a new customer
-
-### 4. `create-simple-product`
-Creates a new simple product in Magento.
-
-example prompt: create a new simple product
-
-**Parameters:**
-- `product` (object): An object containing the product's details.
-  - `sku` (string): The product's SKU.
-  - `name` (string): The product's name.
-  - `price` (number): The product's price.
-  - `attribute_set_id` (number): The attribute set ID for the product.
-  - `status` (number): The product's status (e.g., 1 for enabled).
-  - `visibility` (number): The product's visibility (e.g., 4 for catalog, search).
-  - `type_id` (string): Must be set to "simple".
+---
 
 ## Development
 
-- Written in TypeScript. Source: `index.ts`
-- Build: `npm run build`
-- Bundle: `npm run bundle` (outputs to `dist/bundle.cjs`)
-- TypeScript config: see `tsconfig.json`
-- Rollup config: see `rollup.config.js`
-
-## Extending
-
-To add your own tools, edit `index.ts` and use the `server.tool` method. See the included examples for reference.
-
-## Related Projects
-
-- [Magento 2 MCP server module](https://github.com/iranimij/magento-mcp-server): The Magento 2 extension that this remote server is designed to work with.
-
-## License
-
-MIT
-```
-
-</rewritten_file>
+- Written in TypeScript. Source in `src/`.
+- Easily extensible with custom tools.

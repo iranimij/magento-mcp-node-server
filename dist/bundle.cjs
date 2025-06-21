@@ -97041,7 +97041,7 @@ async function getMagentoToken() {
     }
 }
 
-function register$3(server, agent) {
+function register$4(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("create-customer", "Create a new customer in Magento.", {
         customer: objectType({
@@ -97121,7 +97121,7 @@ function register$3(server, agent) {
     });
 }
 
-function register$2(server, agent) {
+function register$3(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("get-product-details", "Get product details for a given product ID from the Magento API.", {
         productId: stringType().describe("The product ID to fetch details for."),
@@ -97144,7 +97144,7 @@ function register$2(server, agent) {
                 ]
             };
         }
-        const url = `${baseUrl}/rest/V1/iranimij/Product/${productId}`;
+        const url = `${baseUrl}/rest/V1/iranimij/Product?productId=${productId}`;
         try {
             const response = await fetch(url, {
                 method: 'GET',
@@ -97178,7 +97178,7 @@ function register$2(server, agent) {
     });
 }
 
-function register$1(server, agent) {
+function register$2(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("get-todays-orders", "Get all today orders details from the Magento API.", {}, async () => {
         if (!baseUrl) {
@@ -97233,7 +97233,7 @@ function register$1(server, agent) {
     });
 }
 
-function register(server, agent) {
+function register$1(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("create-simple-product", "Create a new simple product in Magento.", {
         product: objectType({
@@ -97315,10 +97315,85 @@ function register(server, agent) {
     });
 }
 
+function register(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("search-product-details", "Search product details by SKU, name, or ID from the Magento API. At least one parameter is required.", {
+        sku: stringType().optional().describe("The SKU of the product to search for."),
+        name: stringType().optional().describe("The name of the product to search for."),
+        id: stringType().optional().describe("The ID of the product to search for."),
+    }, async ({ sku, name, id }) => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        if (!sku && !name && !id) {
+            return {
+                content: [
+                    { type: "text", text: "Error: At least one of sku, name, or id must be provided." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        // Build query params
+        const params = new URLSearchParams();
+        if (sku)
+            params.append('sku', sku);
+        if (name)
+            params.append('name', name);
+        if (id)
+            params.append('id', id);
+        const url = `${baseUrl}/rest/V1/iranimij/ProductSearch?${params.toString()}`;
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                agent,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) {
+                return {
+                    content: [
+                        { type: "text", text: `Error: ${response.status} ${response.statusText}` }
+                    ]
+                };
+            }
+            const data = await response.json();
+            return {
+                content: [
+                    { type: "text", text: JSON.stringify(data, null, 2) }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
 async function loadTools(server, agent) {
-    register$1(server, agent);
-    register$3(server, agent);
     register$2(server, agent);
+    register$4(server, agent);
+    register$3(server, agent);
+    register$1(server, agent);
     register(server, agent);
 }
 
