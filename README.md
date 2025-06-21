@@ -65,7 +65,7 @@ This server exposes the following tools. Click each tool for detailed documentat
 
 Below is an example output for a product search using the `search-product-details` tool:
 
-![Example product search output](search-product-name.png)
+![Example product search output](docs/search-product-name.png)
 
 ---
 
