@@ -97041,7 +97041,7 @@ async function getMagentoToken() {
     }
 }
 
-function register$4(server, agent) {
+function register$5(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("create-customer", "Create a new customer in Magento.", {
         customer: objectType({
@@ -97121,7 +97121,7 @@ function register$4(server, agent) {
     });
 }
 
-function register$3(server, agent) {
+function register$4(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("get-product-details", "Get product details for a given product ID from the Magento API.", {
         productId: stringType().describe("The product ID to fetch details for."),
@@ -97178,7 +97178,7 @@ function register$3(server, agent) {
     });
 }
 
-function register$2(server, agent) {
+function register$3(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("get-todays-orders", "Get all today orders details from the Magento API.", {}, async () => {
         if (!baseUrl) {
@@ -97233,7 +97233,7 @@ function register$2(server, agent) {
     });
 }
 
-function register$1(server, agent) {
+function register$2(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("create-simple-product", "Create a new simple product in Magento.", {
         product: objectType({
@@ -97315,7 +97315,7 @@ function register$1(server, agent) {
     });
 }
 
-function register(server, agent) {
+function register$1(server, agent) {
     const baseUrl = process.env.MAGENTO_API_URL;
     server.tool("search-product-details", "Search product details by SKU, name, or ID from the Magento API. At least one parameter is required.", {
         sku: stringType().optional().describe("The SKU of the product to search for."),
@@ -97389,10 +97389,210 @@ function register(server, agent) {
     });
 }
 
+function register(server, agent) {
+    const baseUrl = process.env.MAGENTO_API_URL;
+    server.tool("create-special-product-quote", "Create a new quote (cart) and add a special product with custom attributes and options.", {
+        customer_id: numberType().optional().describe("Customer ID (required for admin users creating quote for customer)"),
+        product: objectType({
+            sku: stringType().describe("Product SKU"),
+            qty: numberType().describe("Product quantity"),
+            product_type: enumType(["simple", "configurable", "bundle", "downloadable"]).optional().describe("Product type"),
+            custom_price: numberType().optional().describe("Custom price for special pricing"),
+            custom_attributes: arrayType(objectType({
+                attribute_code: stringType().describe("Attribute code"),
+                value: unionType([stringType(), numberType(), booleanType()]).describe("Attribute value")
+            })).optional().describe("Custom attributes for special product features"),
+            product_option: objectType({
+                extension_attributes: objectType({
+                    configurable_item_options: arrayType(objectType({
+                        option_id: stringType().describe("Option ID"),
+                        option_value: numberType().describe("Option value")
+                    })).optional().describe("For configurable products"),
+                    bundle_options: arrayType(objectType({
+                        option_id: numberType().describe("Bundle option ID"),
+                        option_qty: numberType().describe("Option quantity"),
+                        option_selections: arrayType(numberType()).describe("Selected option IDs")
+                    })).optional().describe("For bundle products"),
+                    downloadable_option: objectType({
+                        downloadable_links: arrayType(numberType()).describe("Downloadable link IDs")
+                    }).optional().describe("For downloadable products")
+                }).optional()
+            }).optional().describe("Product options for complex product types"),
+            special_notes: stringType().optional().describe("Special notes or instructions for this product")
+        }).describe("Special product details to add to the quote"),
+        quote_notes: stringType().optional().describe("Special notes for the entire quote"),
+        is_guest: booleanType().optional().default(false).describe("Whether this is for a guest customer (true) or logged-in customer (false)")
+    }, async ({ customer_id, product, quote_notes, is_guest }) => {
+        if (!baseUrl) {
+            return {
+                content: [
+                    { type: "text", text: "Error: MAGENTO_API_URL is not set in environment variables." }
+                ]
+            };
+        }
+        let token;
+        try {
+            token = await getMagentoToken();
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Token fetch error: ${error}` }
+                ]
+            };
+        }
+        try {
+            // Step 1: Create a new quote/cart
+            let quoteId;
+            let createQuoteUrl;
+            let createQuoteHeaders;
+            if (is_guest) {
+                // Create guest cart
+                createQuoteUrl = `${baseUrl}/rest/default/V1/guest-carts`;
+                createQuoteHeaders = {
+                    'Content-Type': 'application/json',
+                };
+            }
+            else {
+                // Create customer cart
+                createQuoteUrl = `${baseUrl}/rest/default/V1/carts/mine`;
+                createQuoteHeaders = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                };
+            }
+            const createQuoteResponse = await fetch(createQuoteUrl, {
+                method: 'POST',
+                agent,
+                headers: createQuoteHeaders,
+            });
+            if (!createQuoteResponse.ok) {
+                const errorText = await createQuoteResponse.text();
+                return {
+                    content: [
+                        { type: "text", text: `Error creating quote: ${createQuoteResponse.status} ${createQuoteResponse.statusText} - ${errorText}` }
+                    ]
+                };
+            }
+            quoteId = await createQuoteResponse.text();
+            quoteId = quoteId.replace(/"/g, ''); // Remove quotes from response
+            // Step 2: Prepare cart item data
+            const cartItem = {
+                sku: product.sku,
+                qty: product.qty,
+                quote_id: quoteId
+            };
+            // Add custom price if specified
+            if (product.custom_price) {
+                cartItem.custom_price = product.custom_price;
+            }
+            // Add product options if specified
+            if (product.product_option) {
+                cartItem.product_option = product.product_option;
+            }
+            // Add custom attributes if specified
+            if (product.custom_attributes) {
+                cartItem.custom_attributes = product.custom_attributes;
+            }
+            // Step 3: Add the special product to the cart
+            let addItemUrl;
+            let addItemHeaders;
+            if (is_guest) {
+                addItemUrl = `${baseUrl}/rest/default/V1/guest-carts/${quoteId}/items`;
+                addItemHeaders = {
+                    'Content-Type': 'application/json',
+                };
+            }
+            else {
+                addItemUrl = `${baseUrl}/rest/default/V1/carts/mine/items`;
+                addItemHeaders = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                };
+            }
+            const addItemResponse = await fetch(addItemUrl, {
+                method: 'POST',
+                agent,
+                headers: addItemHeaders,
+                body: JSON.stringify({ cartItem }),
+            });
+            if (!addItemResponse.ok) {
+                const errorText = await addItemResponse.text();
+                return {
+                    content: [
+                        { type: "text", text: `Error adding product to quote: ${addItemResponse.status} ${addItemResponse.statusText} - ${errorText}` }
+                    ]
+                };
+            }
+            const addItemData = await addItemResponse.json();
+            // Step 4: If quote notes are provided, try to update the quote with notes
+            let quoteData = {
+                quoteId: quoteId,
+                itemAdded: addItemData
+            };
+            if (quote_notes || product.special_notes) {
+                // Get current quote details to update with notes
+                let getQuoteUrl;
+                let getQuoteHeaders;
+                if (is_guest) {
+                    getQuoteUrl = `${baseUrl}/rest/default/V1/guest-carts/${quoteId}`;
+                    getQuoteHeaders = {
+                        'Content-Type': 'application/json',
+                    };
+                }
+                else {
+                    getQuoteUrl = `${baseUrl}/rest/default/V1/carts/mine`;
+                    getQuoteHeaders = {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    };
+                }
+                const getQuoteResponse = await fetch(getQuoteUrl, {
+                    method: 'GET',
+                    agent,
+                    headers: getQuoteHeaders,
+                });
+                if (getQuoteResponse.ok) {
+                    const currentQuoteData = await getQuoteResponse.json();
+                    quoteData.quoteDetails = currentQuoteData;
+                }
+                quoteData.notes = {
+                    quote_notes: quote_notes,
+                    product_notes: product.special_notes
+                };
+            }
+            const responseMessage = `Successfully created special product quote!
+
+Quote ID: ${quoteId}
+Product: ${product.sku} (Qty: ${product.qty})
+${product.custom_price ? `Custom Price: $${product.custom_price}` : ''}
+${product.custom_attributes ? `Custom Attributes: ${JSON.stringify(product.custom_attributes, null, 2)}` : ''}
+${quote_notes ? `Quote Notes: ${quote_notes}` : ''}
+${product.special_notes ? `Product Notes: ${product.special_notes}` : ''}
+
+Full Response:
+${JSON.stringify(quoteData, null, 2)}`;
+            return {
+                content: [
+                    { type: "text", text: responseMessage }
+                ]
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    { type: "text", text: `Fetch error: ${error}` }
+                ]
+            };
+        }
+    });
+}
+
 async function loadTools(server, agent) {
-    register$2(server, agent);
-    register$4(server, agent);
     register$3(server, agent);
+    register$5(server, agent);
+    register$4(server, agent);
+    register$2(server, agent);
     register$1(server, agent);
     register(server, agent);
 }

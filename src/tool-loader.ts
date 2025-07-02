@@ -5,6 +5,7 @@ import { register as registerGetProductDetails } from './tools/getProductDetails
 import { register as registerGetTodaysOrders } from './tools/getTodaysOrders.js';
 import { register as registerCreateSimpleProduct } from './tools/createSimpleProduct.js';
 import { register as registerSearchProductDetails } from './tools/SearchProductDetails.js';
+import { register as registerCreateSpecialProductQuote } from './tools/createSpecialProductQuote.js';
 
 export async function loadTools(server: McpServer, agent: https.Agent) {
     registerGetTodaysOrders(server, agent);
@@ -12,4 +13,5 @@ export async function loadTools(server: McpServer, agent: https.Agent) {
     registerGetProductDetails(server, agent);
     registerCreateSimpleProduct(server, agent);
     registerSearchProductDetails(server, agent);
+    registerCreateSpecialProductQuote(server, agent);
 } 

@@ -58,6 +58,7 @@ This server exposes the following tools. Click each tool for detailed documentat
 - [create-customer](docs/create-customer.md): Create a new customer in Magento.
 - [create-simple-product](docs/create-simple-product.md): Create a new simple product in Magento.
 - [search-product-details](docs/search-product-details.md): Search for product details by SKU, name, or ID from the Magento API.
+- [create-special-product-quote](docs/create-special-product-quote.md): Create a new quote (cart) and add a special product with custom attributes and options.
 
 ---
 
