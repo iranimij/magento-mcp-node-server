@@ -9,6 +9,7 @@ Use this tool to add a new customer to your Magento store.
 **Example prompt:**
 ```
 create a new customer
+create a new customer in magento 2 with dummy details
 ```
 
 ## Parameters
