@@ -8,7 +8,7 @@ Use this tool to add a new simple product to your Magento store.
 
 **Example prompt:**
 ```
-create a new simple product
+create a new simple product with dummy details
 ```
 
 ## Parameters
